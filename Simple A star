@@ -1,0 +1,241 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "TensorFlow with GPU",
+      "version": "0.3.2",
+      "provenance": [],
+      "collapsed_sections": [],
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "display_name": "Python 2",
+      "name": "python2"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "[View in Colaboratory](https://colab.research.google.com/github/vimalrajayyappan/Path_Planning/blob/master/Simple%20A%20star)"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "OAEI4b6vNbTK",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        ""
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "QVdQv9Jr5cvj",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "import numpy as np\n",
+        "import matplotlib.pyplot as plt\n",
+        "\n",
+        "\n",
+        "class state:\n",
+        "  def __init__(self,x,y,theta,g,f,h,steer):\n",
+        "    self.x=x\n",
+        "    self.y=y\n",
+        "    self.theta=theta\n",
+        "    self.g=g\n",
+        "    self.f=f\n",
+        "    self.h=h\n",
+        "    self.steer=steer\n",
+        "    \n",
+        "### GOAL NODE        \n",
+        "class goal:\n",
+        "    def __init__(self, x, y):\n",
+        "        self.x = x\n",
+        "        self.y = y\n",
+        "        \n",
+        "class vehicle_points():\n",
+        "  def __init__(self,input_co_ordinates):\n",
+        "    self.input_co_ordinates=input_co_ordinates\n",
+        "    self.center=np.array([(input_co_ordinates[0][0]+input_co_ordinates[2][0])/2.0,(input_co_ordinates[0][1]+input_co_ordinates[2][1])/2.0])\n",
+        "\n",
+        "class link:\n",
+        "    def __init__(self, inp_state, inp_index,vehicle_points_obj):\n",
+        "        self.state = inp_state\n",
+        "        self.index = inp_index\n",
+        "        self.vehicle_points_obj=vehicle_points_obj       \n",
+        "\n",
+        "\n",
+        "\n",
+        "grid_x_m = 10\n",
+        "grid_y_m = 10\n",
+        "free_space=0\n",
+        "\n",
+        "### FOR CELL DIVISION\n",
+        "coll_cell_side = 1.0\n",
+        "grid_on_x = np.int( np.ceil(grid_x_m/coll_cell_side) )\n",
+        "grid_on_y = np.int( np.ceil(grid_y_m/coll_cell_side) )\n",
+        "\n",
+        "### FIT ZEROS\n",
+        "grid = np.zeros((grid_on_x,grid_on_y),np.int)\n",
+        "        \n",
+        "vehicle_pt_obj = vehicle_points(np.array([[1.5,1.5],[1.5,4.5],[4.5,4.5],[4.5,1.5],[1.5,2.5],[1.5,3.5],\n",
+        "                           [2.5,1.5],[2.5,2.5],[2.5,3.5],[2.5,4.5],[3.5,1.5],[3.5,2.5],\n",
+        "                           [3.5,3.5],[3.5,4.5],[4.5,2.5],[4.5,3.5]]))\n",
+        "\n",
+        "\n",
+        "\n",
+        "def euclidean_distance(start_point,end_point):\n",
+        "  return np.sqrt((end_point[0]-start_point[0])**2 +(end_point[1]-start_point[1])**2)\n",
+        "\n",
+        "\n",
+        "\n",
+        "closedA=np.array([[free_space for x in range(grid_on_x)] for y in range(grid_on_y)])\n",
+        "cost_map = np.array([[10000 for x in range(grid_on_x)] for y in range(grid_on_y)])\n",
+        "motion_mat=np.array([[1,0],[-1,0],[0,-1],[0,1]])\n",
+        "\n",
+        "def Astar(current_state,goal):\n",
+        "  open_list = []\n",
+        "  path_link = link(current_state, 0, vehicle_pt_obj)\n",
+        "  open_list.append( path_link )\n",
+        "  goal_reached=False\n",
+        "  cost=0\n",
+        "  heu=0\n",
+        "  \n",
+        "  while(len(open_list)>0 and (not goal_reached)):\n",
+        "    \n",
+        "    \n",
+        "    open_list.sort(key=lambda state_srt : float(state_srt.state.f))\n",
+        "    old_state=open_list.pop(0).state\n",
+        "    cost=old_state.g\n",
+        "    if(goal.x==old_state.x and goal.y==old_state.y):\n",
+        "      goal_reached=True\n",
+        "      print(\"goal_reached\")\n",
+        "      return 1\n",
+        "    node=np.array([old_state.x,old_state.y])    \n",
+        "    for delt in motion_mat:\n",
+        "      nxt_node=node+delt\n",
+        "      \n",
+        "      #print(nxt_node[0])\n",
+        "      #print(nxt_node[1])\n",
+        "      #print(closedA[nxt_node[0]][nxt_node[1]])\n",
+        "      if( (nxt_node[0]<grid_x_m and nxt_node[0]>=0) and (nxt_node[1]<grid_y_m and nxt_node[1]>=0)):\n",
+        "        if(grid[nxt_node[0]][nxt_node[1]]==0 and closedA[nxt_node[0]][nxt_node[1]]==0):\n",
+        "          #print(nxt_node)\n",
+        "          cost+=1\n",
+        "          heu=euclidean_distance([nxt_node[0],nxt_node[1]],[goal.x,goal.y])\n",
+        "          new_state=state(nxt_node[0],nxt_node[1],0,cost,cost+heu,heu,0)\n",
+        "          open_list.append( link(new_state,0,vehicle_pt_obj) )\n",
+        "          closedA[nxt_node[0]][nxt_node[1]]=1\n",
+        "          cost_map[nxt_node[0]][nxt_node[1]]=cost+heu\n",
+        "          plt.plot([node[0],nxt_node[0]],[node[1],nxt_node[1]])\n",
+        "\n",
+        "        \n",
+        "      \n",
+        "    \n",
+        "    \n",
+        "    \n",
+        "    \n",
+        "    \n",
+        "    \n",
+        "  \n",
+        "  "
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "lVAuSffcWJT-",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "for i in range(5):\n",
+        "  grid[5][i]=1\n",
+        "  "
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "h9T8SmGrVeef",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 542
+        },
+        "outputId": "e1934d2e-546d-44bd-b151-3f765332b07b"
+      },
+      "cell_type": "code",
+      "source": [
+        "current_state = state(0,0, 0.0, 0.0, 0.0, 0.0, 0.0)\n",
+        "goal_node=goal(9,9)\n",
+        "Astar(current_state,goal_node)\n",
+        "\n",
+        "\n",
+        "for i in cost_map:\n",
+        "  print(i)\n"
+      ],
+      "execution_count": 45,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "text": [
+            "goal_reached\n",
+            "[   15    14    14    15    17    18    20 10000 10000 10000]\n",
+            "[   13    15    14    15    15    16    18    20 10000 10000]\n",
+            "[   13    14    14    15    16    18    19    21 10000 10000]\n",
+            "[   13    15    16    15    15    16    17    19    21 10000]\n",
+            "[14 14 14 15 16 16 17 18 19 21]\n",
+            "[10000 10000 10000 10000 10000    16    18    18    20 10000]\n",
+            "[10000 10000 10000    21    19    17    19    18    20 10000]\n",
+            "[10000 10000 10000 10000    20    17    19    18    20 10000]\n",
+            "[10000 10000 10000 10000    21    18    20    19    20 10000]\n",
+            "[10000 10000 10000 10000    21    19    20    20    20    20]\n"
+          ],
+          "name": "stdout"
+        },
+        {
+          "output_type": "display_data",
+          "data": {
+            "image/png": "iVBORw0KGgoAAAANSUhEUgAAAdkAAAFKCAYAAABRtSXvAAAABHNCSVQICAgIfAhkiAAAAAlwSFlz\nAAALEgAACxIB0t1+/AAAADl0RVh0U29mdHdhcmUAbWF0cGxvdGxpYiB2ZXJzaW9uIDIuMS4yLCBo\ndHRwOi8vbWF0cGxvdGxpYi5vcmcvNQv5yAAAFURJREFUeJzt3X+M1PWdx/HXd77DrOwPYHY7gHAs\nB9jUFuUWEnr8qlAL2EawAaO7MQi5/lGJrakJbWg2GriYaNj7R0+smKDXPy5Nl+KKprFaLe6FHLvR\nilktFQurRVwKO1tmf7E/Z2bvj57ctZWd7+i+57Pf8fn4R8HJzCsfZ/c535kNeGNjY2MCAAATLuJ6\nAAAAxYrIAgBghMgCAGCEyAIAYITIAgBghMgCAGAkOtF3mEz2Tej9xeOlSqUGJvQ+8fc458LgnAuH\nsy4MzllKJCqu+t8m/ZVsNOq7nvC5wDkXBudcOJx1YXDO45v0kQUAIKyILAAARogsAABGiCwAAEaI\nLAAARogsAABGiCwAAEaILAAARogsAABGiCwAAEYm/M8uBvDJms78UqUdMX1z7kbXU4DPraYzv5Qk\nbb1uU0EejytZoEDe6nxHredOuJ4BfK691fmO3up8p2CPR2QBADBCZAEAMEJkAQAwQmQBADBCZAEA\nMEJkAQAwQmQBADBCZAEAMEJkAQAwQmQBADBCZAEAMEJkAQAwQmQBADBCZAEAMEJkAQAwQmQBADBC\nZAEAMEJkAQAwQmQBADBCZAEAMEJkAQAwQmQBADBCZAEAMEJkAQAwQmQBADBCZAEAMBLNdYPLly9r\n9+7d6unp0ejoqL73ve/pa1/7WiG2AQAQajkj+9xzz2nBggXatWuXLl68qB07duill14qxDYAAEIt\n59vF8Xhc3d3dkqTe3l7F43HzUQAAFIOcV7K33nqrmpqatGHDBvX29uqpp54qxC5gXIeOntEbpzpd\nz8jLwMJB+Tm/4iaf40fbJUmrbl7keElwTWd+qdKOmL45d6PrKYGF8ZyPH21XaWlMNSvmuZ4S2OWh\n0YI+Xs4v+eeff15z5szR008/rVOnTqm+vl5NTU1XvX08Xqpo1J/QkYlExYTeHz5ZmM55amlMvu+5\nnpGXTHdCXulQqM5Zkv54ukuS9O3aGsdLgnu79XeSpLtrbne8JLgwnvPHmzds/orjJcFlU7MlFe77\nXc7InjhxQmvWrJEkXX/99ers7FQmk5Hvf3JIU6mBCR2YSFQomeyb0PvE3wvbOW9eUa3NK6pdz8jL\ng8eb5Ue8UJ2zJGUzWUkK1e5Mdix0Zx3Gc85msor4kVBtnnLxBkkTe87jBTvnZ7Lz589XW1ubJKmj\no0NlZWVXDSwAAPg/Oa9ka2trVV9fr23btimdTmvv3r0FmAUAQPjljGxZWZkee+yxQmwBAKCo8Cc+\nAQBghMgCAGCEyAIAYITIAgBghMgCAGCEyAIAYITIAgBghMgCAGCEyAIAYITIAgBghMgCAGCEyAIA\nYITIAgBghMgCAGCEyAIAYITIAgBghMgCAGCEyAIAYITIAgBghMgCAGCEyAIAYITIAgBghMgCAGCE\nyAIAYCTqekCx+dW5pCTpW/MSjpcEl+p4RRfePaVMNut6SmADo4NKRWfoqzfsdD0lsMzlyxrzXK/I\n30hvv5Qe0fu7d7meEljf2hKlvah+9JPjrqcEdl13n6Zk06E659GKmyUpVJvT076uSElJwR6PyE6w\ndy71SwpXZMNoJDOiiyNdrmfk5YsfDsnzwlfZ8uFLuma42/WMvMxIlisVm+56Rl5KRrtVOdrrekZe\nZg1+KClcz+kvj/5JscrZBXs8IgvF525Qomarksk+11MCO3D8EUnSZsc78rH2D2Py/XB9Q5KkkUS1\nRlSthffe43pKYHslJRIVoXpOh9FChe+cv1vgx+MzWQAAjBBZAACMEFkAAIwQWQAAjBBZAACMEFkA\nAIwQWQAAjBBZAACMEFkAAIwQWQAAjBBZAACMEFkAAIwQWQAAjBBZAACMEFkAAIwQWQAAjBBZAACM\nEFkAAIwQWQAAjBBZAACMEFkAAIwQWQAAjBBZAACMEFkAAIwEiuwLL7yg2267TVu3blVzc7PxJAAA\nikPOyKZSKT3xxBP62c9+pgMHDug3v/lNIXYBABB60Vw3aGlp0cqVK1VeXq7y8nI99NBDhdgFAEDo\n5YzsRx99pKGhIe3cuVO9vb267777tHLlykJsU6rjFV1495Qy2WxBHm8ipEfWKevlPNZJ5dDRMzpx\nOqlMZsz1lMAGFg7Jj4brRwoGRgflZTzXM/I2NJR2PSFvyV/8XP1TYyrftNX1lMB+dS4pSfrWvITj\nJcEdOnpGU0tj2ryi2vWUwAp9zoFq0N3drf379+v8+fPavn27XnvtNXneJ3+ziMdLFY36EzJu+FJM\nw72SHwnPN9Nq77z6vOlKJCpcTwlsamlMkuT74QlAtudaRcumhOqcz8y/RpK0LkSbJV35Wg/TWZ99\n600NSFrwLztcTwns9787K0naviw853zi9F+C9Z3Nix0vCa7Q55wzslVVVVq6dKmi0aiqq6tVVlam\nS5cuqaqq6hNvn0oNTNi4ksq1uvFLm5RM9k3YfVo73/aBJIVq8+YV1frO5sWh2tzQNltSuM75zeUJ\n+REvVJslqaTkLy+aw7Q7k8nK9yOh2yyF7ZzH5Pvhek5bnPN4L0BzXiKuWbNGra2tymazSqVSGhgY\nUDwen7BxAAAUq5xXsrNmzdItt9yiO++8U5L0wAMPKBKit28BAHAl0GeydXV1qqurs94CAEBR4ZIU\nAAAjRBYAACNEFgAAI0QWAAAjRBYAACNEFgAAI0QWAAAjRBYAACNEFgAAI0QWAAAjRBYAACNEFgAA\nI0QWAAAjRBYAACNEFgAAI0QWAAAjRBYAACNEFgAAI0QWAAAjRBYAACNEFgAAI0QWAAAjRBYAACNE\nFgAAI1HXA8aT6nhFF949pUw263pKYOmRdcp6k/pY/04YzzkzvFYaC9drxN7+YaWzY/rRT467npKX\n67r7NCWb1vu7d7meElh3f4+yXkT7Q3TW5Usr5En6z5+0uJ4SWP/QkLzImDpOPuZ6SmCZkbWS5xfs\n8cJVgxCo9s6rV9Nczyh6CzJnpb6spCWupwQ25dJsjWbHXM/IW8lotypHe13PyMvp6hJlQ/ZG3ULv\nQ3nyJMVdTwnsmllT5Xnhek4v9D7838jeWJDHm9SRjc/doETNViWTfa6nBHa+7QPXE/IWxnP+6sdX\nVRu3uB2Sh5pL/6SIH9Fd9/6z6ylF7z+OPyI/4unfVqxyPSWwj68G5977A8dLgjvf9oF8P6K5i8Nz\nzmsKfNUdrpd6AACECJEFAMAIkQUAwAiRBQDACJEFAMAIkQUAwAiRBQDACJEFAMAIkQUAwAiRBQDA\nCJEFAMAIkQUAwAiRBQDACJEFAMAIkQUAwAiRBQDACJEFAMAIkQUAwAiRBQDACJEFAMAIkQUAwAiR\nBQDACJEFAMAIkQUAwAiRBQDASKDIDg0Naf369WpqarLeAwBA0QgU2SeffFLTp0+33gIAQFGJ5rpB\ne3u7zpw5o3Xr1hVgzl9LdbyiC++eUiabLfhjf1rpkbXKeOF6F/740XaVlsZUs2Ke6ymBDQylXU/I\n2+X0oCIZz/WMz4Vs5EaNeZw13MsZ2X379unBBx/UkSNHAt1hPF6qaNT/zMMkafhSTMO9kh8JT7Tm\neR+qZ8xTIrHa9ZTA/ni6S5K0YfNXHC8J7r2K+ZKkrycqHC8Jrq/qgiQpEaLNYRWLLZQUrrMevrZG\nUrg2f3VupaRwbS70OY8b2SNHjqimpkbz5gW/wkmlBj7zqI+VVK7VjV/apGSyb8Lu09ofjj8iSaHa\nnM1kFfEjodrcOmeFJOn2EG3uWXBWfsQL1TmH1VR/qvyQPadLKtdKCtf3jnVfmK5EoiJUmy3Oebxg\njxvZ5uZmnTt3Ts3Nzbpw4YJisZhmz56tVatWTdg4AACK1biRffTRR6/8++OPP665c+cSWAAAAgrP\nh50AAIRMzh98+th9991nuQMAgKLDlSwAAEaILAAARogsAABGiCwAAEaILAAARogsAABGiCwAAEaI\nLAAARogsAABGiCwAAEaILAAARogsAABGiCwAAEaILAAARogsAABGiCwAAEaILAAARogsAABGiCwA\nAEaILAAARogsAABGiCwAAEaILAAARogsAABGoq4HjOfQ0TOaWhrT5hXVrqcENpjOuJ6Qt6HefkUy\no3p/9y7XUwJLT/u6IiUlrmfkZXhoVJ7nuZ4BoIAmdWTfONUp3/dCFdkp0QWuJ+QtOnxJ04e7Xc/I\ny5dH/6RY5WzXM/Iy7c+z5UWIbCHcWFmuqVNjrmcAkzuyYRQvW+V6Qt5OJubJ96u15Z57XE8J7Luu\nB3wK/5i8URGfT2gK4VvzEkokKpRM9rmegs85vuIBADBCZAEAMEJkAQAwQmQBADBCZAEAMEJkAQAw\nQmQBADBCZAEAMEJkAQAwQmQBADBCZAEAMEJkAQAwQmQBADBCZAEAMEJkAQAwQmQBADBCZAEAMEJk\nAQAwQmQBADBCZAEAMEJkAQAwQmQBADBCZAEAMEJkAQAwEg1yo4aGBr355ptKp9O65557tHHjRutd\nAACEXs7Itra26vTp02psbFQqldKWLVuILAAAAeSM7PLly7VkyRJJ0rRp0zQ4OKhMJiPf983HAQAQ\nZjkj6/u+SktLJUmHDx/WTTfdVLDA9g+PKuNJDW0fFOTxJkLPSFqxiOd6Rl6ymUGNZcO1OfmLn6vv\nt2+4npGXkWk3a2xKoE9oABSJwF/xr776qg4fPqxnnnlm3NvF46WKRicmwhUVMQ2XROT74fn5rJJo\nRLPKrlEiUeF6SmA3XPtnSQrV5v6pMQ2E6HkhSZVDZ9VbEgvVOYcdZ10YnPPVBYrssWPHdODAAR08\neFAVFeMfZio1MCHDJGnJiBTJSHfdMH/C7rNQksk+1xMC2/jlP8mPREK1uXzTVpVv2up6Rl4OHn9E\nfsQL1TmHWSJRwVkXAOc8/ouMnJHt6+tTQ0ODfvrTn2rGjBkTOgwAgGKWM7IvvviiUqmU7r///iu/\nt2/fPs2ZM8d0GAAAYZczsrW1taqtrS3EFgAAikq4fnIEAIAQIbIAABghsgAAGCGyAAAYIbIAABgh\nsgAAGCGyAAAYIbIAABghsgAAGCGyAAAYIbIAABghsgAAGCGyAAAYIbIAABghsgAAGCGyAAAYIbIA\nABghsgAAGCGyAAAYIbIAABghsgAAGCGyAAAYIbIAABghsgAAGIm6HjCey+lBRTKe6xl5SXW8IkmK\nz93geElwA4NpeSF7uZX8xc8lSYk76hwvCS6bHtSYF67nM4DPZlJHtrfygsL2PWmg+/eSwhXZkxe/\nIM+TrnM9JA99v31DUrgi+6VYVJGwPaEBfCaTO7ILz8qP8E3J2n+f/aJ839O3XQ8pct+omC4/ErK3\nDAB8JnzFAwBghMgCAGCEyAIAYITIAgBghMgCAGCEyAIAYITIAgBghMgCAGCEyAIAYITIAgBghMgC\nAGCEyAIAYITIAgBghMgCAGCEyAIAYITIAgBghMgCAGCEyAIAYITIAgBghMgCAGCEyAIAYITIAgBg\nhMgCAGCEyAIAYITIAgBgJBrkRg8//LDa2trkeZ7q6+u1ZMkS610AAIRezsi+/vrrOnv2rBobG9Xe\n3q76+no1NjYWYhsAAKGWM7ItLS1av369JGnRokXq6elRf3+/ysvLzcdN/cM/qOxSQv/+X83mjzVR\nNq4ZVHQso/d373I9JbDLX/im0tEpamj7wPWUwL4xfFkaS+vB44+4nhJYXcmoSqIx1zMAFFDOyHZ1\ndWnx4sVXfl1ZWalkMnnVyMbjpYpG/QkZVxaJy8v68rwJubuCuHChSuXpXiX88HzcPat0RL0zKuSH\naPPZBbOUyfbIj4TnyfHHbETXXlOlRKLC9ZTPDc66MDjnqwv0mez/NzY2Nu5/T6UGPvWYv/WD7ZuU\nSFQomeybsPu0t+4v/6h1OiIve6TwnfMN/ypJusPxjHyF7pxDjLMuDM55/BcZOS9dZs6cqa6uriu/\n7uzsVCKRmJhlAAAUsZyRXb16tV5++WVJ0smTJzVz5syCfB4LAEDY5Xy7eNmyZVq8eLHq6urkeZ72\n7NlTiF0AAIReoM9kf/jDH1rvAACg6ITnx0kBAAgZIgsAgBEiCwCAESILAIARIgsAgBEiCwCAESIL\nAIARIgsAgBFvLNef+A8AAD4VrmQBADBCZAEAMEJkAQAwQmQBADBCZAEAMEJkAQAwMqkj+/DDD6u2\ntlZ1dXV6++23Xc8pWg0NDaqtrdXtt9+uX//6167nFLWhoSGtX79eTU1NrqcUrRdeeEG33Xabtm7d\nqubmZtdzitLly5f1/e9/X3fffbfq6up07Ngx15MmrUB/absLr7/+us6ePavGxka1t7ervr5ejY2N\nrmcVndbWVp0+fVqNjY1KpVLasmWLNm7c6HpW0XryySc1ffp01zOKViqV0hNPPKFnn31WAwMDevzx\nx7Vu3TrXs4rOc889pwULFmjXrl26ePGiduzYoZdeesn1rElp0ka2paVF69evlyQtWrRIPT096u/v\nV3l5ueNlxWX58uVasmSJJGnatGkaHBxUJpOR7/uOlxWf9vZ2nTlzhm/6hlpaWrRy5UqVl5ervLxc\nDz30kOtJRSkej+u9996TJPX29ioejzteNHlN2reLu7q6/up/XGVlpZLJpMNFxcn3fZWWlkqSDh8+\nrJtuuonAGtm3b59+/OMfu55R1D766CMNDQ1p586duuuuu9TS0uJ6UlG69dZbdf78eW3YsEHbtm3T\n7t27XU+atCbtlezf4k9/tPXqq6/q8OHDeuaZZ1xPKUpHjhxRTU2N5s2b53pK0evu7tb+/ft1/vx5\nbd++Xa+99po8z3M9q6g8//zzmjNnjp5++mmdOnVK9fX1/JzBVUzayM6cOVNdXV1Xft3Z2alEIuFw\nUfE6duyYDhw4oIMHD6qiosL1nKLU3Nysc+fOqbm5WRcuXFAsFtPs2bO1atUq19OKSlVVlZYuXapo\nNKrq6mqVlZXp0qVLqqqqcj2tqJw4cUJr1qyRJF1//fXq7OzkY6armLRvF69evVovv/yyJOnkyZOa\nOXMmn8ca6OvrU0NDg5566inNmDHD9Zyi9eijj+rZZ5/VoUOHdMcdd+jee+8lsAbWrFmj1tZWZbNZ\npVIpDQwM8Hmhgfnz56utrU2S1NHRobKyMgJ7FZP2SnbZsmVavHix6urq5Hme9uzZ43pSUXrxxReV\nSqV0//33X/m9ffv2ac6cOQ5XAZ/OrFmzdMstt+jOO++UJD3wwAOKRCbttURo1dbWqr6+Xtu2bVM6\nndbevXtdT5q0+KvuAAAwwks8AACMEFkAAIwQWQAAjBBZAACMEFkAAIwQWQAAjBBZAACMEFkAAIz8\nD0Jx5b2lg1BwAAAAAElFTkSuQmCC\n",
+            "text/plain": [
+              "<matplotlib.figure.Figure at 0x7f2bf5dda550>"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          }
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "id": "gNEtngvSP_Qg",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "\n"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    }
+  ]
+}
