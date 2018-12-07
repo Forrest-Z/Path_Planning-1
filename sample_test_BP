@@ -1,0 +1,183 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "TensorFlow with GPU",
+      "version": "0.3.2",
+      "provenance": [],
+      "collapsed_sections": [],
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "display_name": "Python 2",
+      "name": "python2"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/vimalrajayyappan/Path_Planning/blob/master/sample_test_BP\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "Oq6Tsxexycu0",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "import numpy as np\n",
+        "import math as MT\n",
+        "\n",
+        "\n",
+        "### INPUT VEHICLE CO-ORDINATES\n",
+        "class vehicle_points():\n",
+        "  def __init__(self,input_co_ordinates,center):\n",
+        "    self.input_co_ordinates=input_co_ordinates\n",
+        "    self.center=center\n",
+        "\n",
+        "\n",
+        "### FLOOR VALUE\n",
+        "def idx(value):\n",
+        "  return int(MT.floor(value))\n",
+        "\n",
+        "\n",
+        "### TRANSFORM VEHICLE CO-ORDINATES \n",
+        "def transform_vehicle_co_ordinates(vehicle_point_object, next_state, angle_of_rotation):\n",
+        "    displaced_matrix = np.array([next_state[0]-vehicle_point_object.center[0],next_state[1]-vehicle_point_object.center[1]])\n",
+        "    transformed_matrix=np.add(vehicle_point_object.input_co_ordinates,displaced_matrix)\n",
+        "    return vehicle_points(rotate_vehicle_co_ordinates(vehicle_points(transformed_matrix,next_state),angle_of_rotation),next_state)\n",
+        "  \n",
+        "  \n",
+        "### ROTATE VEHICLE CO-ORDINATES     \n",
+        "def rotate_vehicle_co_ordinates(vehicle_point_object,angle_of_rotation):\n",
+        "    rotation_matrix = np.array([[np.cos(angle_of_rotation), np.sin(angle_of_rotation)], \n",
+        "                                [-np.sin(angle_of_rotation), np.cos(angle_of_rotation)]])\n",
+        "    return np.add(vehicle_point_object.center,np.matmul(np.subtract(vehicle_point_object.input_co_ordinates,vehicle_point_object.center), rotation_matrix))\n",
+        "\n",
+        "\n",
+        "### CHECK VEHICLE IN SAFE POSITION  \n",
+        "def is_vehicle_in_safe_position(vehicle_point_object,grid):\n",
+        "  grid_on_x=len(grid[0])\n",
+        "  grid_on_y=len(grid)\n",
+        "  for point in vehicle_point_object.input_co_ordinates:\n",
+        "    if(is_within_grid( idx(point[0]),idx(point[1]),grid_on_x,grid_on_y) and  \n",
+        "       (grid[idx(point[0])][idx(point[1])]==0)):\n",
+        "      continue\n",
+        "    else:\n",
+        "      return False\n",
+        "  return True\n",
+        "\n",
+        "### CHECK WITHIN GRID  \n",
+        "def is_within_grid(x,y,grid_on_x,grid_on_y):\n",
+        "  return (x>=0 and x<grid_on_x and y>=0 and y<grid_on_y)\n"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "mUZwmvGsDXFs",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "waypoints=[[40.9958630327101, 39.909132953820205, 6.192192748613036], [41.950972438691615, 39.6128796456435, 5.982417840818716], [42.823452043260986, 39.12422911652225, 5.772642933024396], [43.57504852370986, 38.4646059433568, 5.562868025230076], [44.17280860231978, 37.662930891717885, 5.353093117435756], [44.59052386221834, 36.754352902964094, 5.143318209641436], [44.80987983902904, 35.778708010886334, 4.9335433018471155], [44.821259007110015, 34.77877275571539, 4.7237683940527955], [44.62416245395207, 33.79838867346331, 4.513993486258475], [44.22723175468562, 32.880540091190696, 4.304218578464155], [43.64787008762265, 32.06546950606447, 4.094443670669835], [42.91147920278567, 31.388913178232844, 3.884668762875515], [42.11665806786753, 30.7820694063381, 3.7936762043089645], [41.30875511387626, 30.192753856795946, 3.7718040384274834], [40.500852159884985, 29.603438307253793, 3.7718040384274834], [39.70603102496685, 28.996594535359048, 3.7936762043089645], [38.87237209357428, 28.44431490862147, 3.7266889062011836], [37.95526895718252, 28.045664890158655, 3.551637021648756], [36.97525594841183, 27.84673147757993, 3.341862113854436], [35.9812207298146, 27.737671933346675, 3.2508695552878852], [34.987185511217376, 27.62861238911342, 3.2508695552878852], [33.99577323046773, 27.497838960700868, 3.2727417211693663], [32.99783089075017, 27.43372120497713, 3.2057544230615855], [31.998724962776848, 27.391444205455393, 3.1838822571801044], [30.999619034803523, 27.349167205933657, 3.1838822571801044], [29.999620640688825, 27.350959346561137, 3.139800512002988], [28.999822237602746, 27.330880671641573, 3.1616726778844693], [27.99982384348805, 27.332672812269053, 3.139800512002988], [26.99982544937335, 27.334464952896532, 3.139800512002988], [26.0038011693799, 27.24538277923912, 3.230793070569539], [25.009963389465028, 27.134538441477215, 3.25266523645102], [24.018787534360783, 27.001984964501446, 3.274537402332501], [23.04975688110312, 26.75504449992136, 3.391114316871251], [22.153392319352925, 26.311726811983718, 3.600889224665571], [21.368994392831077, 25.691468887513402, 3.810664132459891], [20.662064573118364, 24.98418518912855, 3.927241046998641], [19.98698969842022, 24.24643596781328, 3.9713227921757572], [19.381744678959297, 23.450396731080726, 4.062315350742308], [18.776499659498374, 22.654357494348172, 4.062315350742308], [18.17125464003745, 21.85831825761562, 4.062315350742308], [17.566009620576526, 21.062279020883064, 4.062315350742308], [16.960764601115603, 20.26623978415051, 4.062315350742308], [16.35551958165468, 19.470200547417956, 4.062315350742308], [15.750274562193756, 18.674161310685403, 4.062315350742308], [15.145029542732832, 17.87812207395285, 4.062315350742308], [14.539784523271909, 17.082082837220295, 4.062315350742308], [13.934539503810985, 16.28604360048774, 4.062315350742308], [13.329294484350061, 15.490004363755187, 4.062315350742308], [12.724049464889138, 14.693965127022633, 4.062315350742308], [12.118804445428214, 13.897925890290079, 4.062315350742308], [11.51355942596729, 13.101886653557525, 4.062315350742308], [10.908314406506367, 12.305847416824971, 4.062315350742308], [10.320623867399119, 11.496761617762948, 4.084187516623789], [9.715378847938196, 10.700722381030396, 4.062315350742308], [9.127688308830948, 9.891636581968372, 4.084187516623789], [8.522443289370024, 9.09559734523582, 4.062315350742308], [7.934752750262776, 8.286511546173797, 4.084187516623789], [7.329507730801852, 7.490472309441244, 4.062315350742308], [6.741817191694604, 6.6813865103792205, 4.084187516623789], [6.136572172233681, 5.885347273646667, 4.062315350742308], [5.548881633126433, 5.076261474584644, 4.084187516623789], [4.943636613665509, 4.280222237852091, 4.062315350742308], [4.355946074558261, 3.471136438790068, 4.084187516623789]]\n",
+        "waypoints=[[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7]]\n",
+        "localization=[5,5.5]"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "DyqlH2vkEdv4",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        },
+        "outputId": "da2f7ff1-4ea5-4fa3-9bac-8384ffe83f36"
+      },
+      "cell_type": "code",
+      "source": [
+        "from scipy.spatial import KDTree\n",
+        "\n",
+        "re_created_wp=[[w[0],w[1]] for w in waypoints]\n",
+        "waypoints_tree=KDTree(re_created_wp)\n",
+        "closest_idx=waypoints_tree.query(localization,1)[1]\n",
+        "# print('closest_idx',closest_idx)\n",
+        "closest_coord=re_created_wp[closest_idx]\n",
+        "prev_coord=re_created_wp[closest_idx-1]\n",
+        "\n",
+        "cl_vect=np.array(closest_coord)\n",
+        "prev_vect=np.array(prev_coord)\n",
+        "pos_vect=np.array(localization)\n",
+        "# print(cl_vect-prev_vect)\n",
+        "# print(pos_vect-cl_vect)\n",
+        "val= np.dot(cl_vect-prev_vect,pos_vect-cl_vect)\n",
+        "# print('val',val)\n",
+        "if val>0:\n",
+        "  temp=closest_idx\n",
+        "  closest_idx=(closest_idx+1)%len(re_created_wp)\n",
+        "  if(closest_idx==0 and temp>0):\n",
+        "    closest_idx=temp\n",
+        "closest_idx"
+      ],
+      "execution_count": 88,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "5"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 88
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "id": "SkYojlrKG4Zs",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "vehicle_pt_obj_actual = vehicle_points( np.array([[0.5,0.5],[0.5,1.5],[0.5,2.5],[0.5,3.5],[1.5,0.5],[1.5,1.5],[1.5,2.5],[1.5,3.5]]),[0,2] )\n",
+        "for wp in waypoints[closest_idx+10:]:\n",
+        "  transformed_coordinates=transform_vehicle_co_ordinates(vehicle_pt_obj_actual,[wp[0],wp[1]],wp[2])\n",
+        "  if(not is_vehicle_in_safe_position(transformed_coordinates,grid)):\n",
+        "    \n",
+        "    "
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "QDHC4wZ4H33X",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        ""
+      ],
+      "execution_count": 0,
+      "outputs": []
+    }
+  ]
+}
