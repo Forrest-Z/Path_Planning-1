@@ -1,0 +1,305 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "Hello, Colaboratory",
+      "version": "0.3.2",
+      "provenance": [],
+      "collapsed_sections": [],
+      "toc_visible": true,
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "display_name": "Python 3",
+      "name": "python3"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/vimalrajayyappan/Path_Planning/blob/master/Dumb\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "hiwmBex4wCUZ",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "\n",
+        "\n",
+        "def closest_index(waypoints,localized_point):\n",
+        "  re_created_wp=[[w[0],w[1]] for w in waypoints]\n",
+        "  waypoints_tree=KDTree(re_created_wp)\n",
+        "  closest_idx=waypoints_tree.query(localized_point,1)[1]\n",
+        "  # print('closest_idx',closest_idx)\n",
+        "  closest_coord=re_created_wp[closest_idx]\n",
+        "  prev_coord=re_created_wp[closest_idx-1]\n",
+        "\n",
+        "  cl_vect=np.array(closest_coord)\n",
+        "  prev_vect=np.array(prev_coord)\n",
+        "  pos_vect=np.array(localized_point)\n",
+        "  # print(cl_vect-prev_vect)\n",
+        "  # print(pos_vect-cl_vect)\n",
+        "  val= np.dot(cl_vect-prev_vect,pos_vect-cl_vect)\n",
+        "  # print('val',val)\n",
+        "  if val>0:\n",
+        "    temp=closest_idx\n",
+        "    closest_idx=(closest_idx+1)%len(re_created_wp)\n",
+        "    if(closest_idx==0 and temp>0):\n",
+        "      closest_idx=temp\n",
+        "  return closest_idx\n",
+        "\n",
+        "waypoints=[[0,1],[0,2],[0,3],[0,4],[0,5],[0,6],[0,7]]\n",
+        "localization=[0,5.5]\n",
+        "closest_index(waypoints,localization)\n",
+        "\n"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "4IWFrgAu9tFi",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "import numpy as np\n",
+        "from scipy.spatial import KDTree\n",
+        "import math as MT\n",
+        "\n",
+        "\n",
+        "def get_way_point_tree_list(waypoint_list):\n",
+        "  waypoint_tree_list=[]\n",
+        "  for lane_waypoints in waypoint_list:\n",
+        "    re_created_wp=[[w[0],w[1]] for w in lane_waypoints]\n",
+        "    waypoints_tree=KDTree(re_created_wp)\n",
+        "    waypoint_tree_list.append(waypoints_tree)\n",
+        "  return waypoint_tree_list\n",
+        "    \n",
+        "    \n",
+        "def closest_index(waypoints_tree,lane_waypoints,localized_point):\n",
+        "  closest_idx=waypoints_tree.query(localized_point,1)[1]\n",
+        "  closest_coord=lane_waypoints[closest_idx][:2]\n",
+        "  prev_coord=lane_waypoints[closest_idx-1][:2]\n",
+        "  cl_vect=np.array(closest_coord)\n",
+        "  prev_vect=np.array(prev_coord)\n",
+        "  pos_vect=np.array(localized_point)\n",
+        "  val= np.dot(cl_vect-prev_vect,pos_vect-cl_vect)\n",
+        "  if val>0:\n",
+        "    temp=closest_idx\n",
+        "    closest_idx=(closest_idx+1)%len(lane_waypoints)\n",
+        "    if(closest_idx==0 and temp>0):\n",
+        "      closest_idx=temp\n",
+        "  return closest_idx\n",
+        "\n",
+        "\n",
+        "### INPUT VEHICLE CO-ORDINATES\n",
+        "class vehicle_points():\n",
+        "  def __init__(self,input_co_ordinates,center):\n",
+        "    self.input_co_ordinates=input_co_ordinates\n",
+        "    self.center=center\n",
+        "    \n",
+        "### LANE CLASS\n",
+        "class vehicle_params():\n",
+        "  def __init__(self,lane_number,state):\n",
+        "    self.lane_number=lane_number\n",
+        "    self.state=state\n",
+        "    \n",
+        "\n",
+        "\n",
+        "### FLOOR VALUE\n",
+        "def idx(value):\n",
+        "  return int(MT.floor(value))\n",
+        "\n",
+        "\n",
+        "### TRANSFORM VEHICLE CO-ORDINATES \n",
+        "def transform_vehicle_co_ordinates(vehicle_point_object, next_state, angle_of_rotation):\n",
+        "    displaced_matrix = np.array([next_state[0]-vehicle_point_object.center[0],next_state[1]-vehicle_point_object.center[1]])\n",
+        "    transformed_matrix=np.add(vehicle_point_object.input_co_ordinates,displaced_matrix)\n",
+        "    return vehicle_points(rotate_vehicle_co_ordinates(vehicle_points(transformed_matrix,next_state),angle_of_rotation),next_state)\n",
+        "  \n",
+        "  \n",
+        "### ROTATE VEHICLE CO-ORDINATES     \n",
+        "def rotate_vehicle_co_ordinates(vehicle_point_object,angle_of_rotation):\n",
+        "    rotation_matrix = np.array([[np.cos(angle_of_rotation), np.sin(angle_of_rotation)], \n",
+        "                                [-np.sin(angle_of_rotation), np.cos(angle_of_rotation)]])\n",
+        "    return np.add(vehicle_point_object.center,np.matmul(np.subtract(vehicle_point_object.input_co_ordinates,vehicle_point_object.center), rotation_matrix))\n",
+        "\n",
+        "\n",
+        "### CHECK VEHICLE IN SAFE POSITION  \n",
+        "def is_vehicle_in_safe_position(vehicle_point_object,grid):\n",
+        "  grid_on_x=len(grid[0])\n",
+        "  grid_on_y=len(grid)\n",
+        "  for point in vehicle_point_object.input_co_ordinates:\n",
+        "    if(is_within_grid( idx(point[0]),idx(point[1]),grid_on_x,grid_on_y) and  \n",
+        "       (grid[idx(point[0])][idx(point[1])]==0)):\n",
+        "      continue\n",
+        "    else:\n",
+        "      return False\n",
+        "  return True\n",
+        "\n",
+        "### CHECK WITHIN GRID  \n",
+        "def is_within_grid(x,y,grid_on_x,grid_on_y):\n",
+        "  return (x>=0 and x<grid_on_x and y>=0 and y<grid_on_y)\n",
+        "\n",
+        "def validate_safe(waypoints,grid,vehicle_pt_obj_actual):\n",
+        "  for wp in waypoints:\n",
+        "    #print(wp)\n",
+        "    transformed_coordinates=transform_vehicle_co_ordinates(vehicle_pt_obj_actual,[wp[0],wp[1]],wp[2])\n",
+        "    #print(transformed_coordinates.input_co_ordinates)\n",
+        "    if(not is_vehicle_in_safe_position(transformed_coordinates,grid)):\n",
+        "      return False\n",
+        "  return True\n",
+        "\n",
+        "###COST A\n",
+        "def goal_distance_cost( goal_lane,  intended_lane,  distance_to_goal) :\n",
+        "    delta_d = goal_lane - intended_lane;\n",
+        "    cost = 1 - math.exp(-(abs(delta_d) / distance_to_goal));\n",
+        "    return cost;"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "FIiYACxvCeyY",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "\n",
+        "#INPUT\n",
+        "waypoint_list=[[[0,1,np.pi/2],[0,2,np.pi/2],[0,3,np.pi/2]],[[4,1,np.pi/2],[4,2,np.pi/2],[4,3,np.pi/2]]]  \n",
+        "localization_value=[0,2.5]\n",
+        "vehicle_pt_obj_actual = vehicle_points( np.array([[0.5,0.5],[0.5,1.5],[0.5,2.5],[0.5,3.5],[1.5,0.5],[1.5,1.5],[1.5,2.5],[1.5,3.5]]),[0,2] )\n",
+        "\n",
+        "\n",
+        "waypoint_tree_list=get_way_point_tree_list(waypoint_list)\n"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "zf1dEdd6CbXo",
+        "colab_type": "code",
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 34
+        },
+        "outputId": "de057539-5c62-48e6-e4be-5d2e34166499"
+      },
+      "cell_type": "code",
+      "source": [
+        "closest_index(waypoint_tree_list[1],waypoint_list[1],localization_value)"
+      ],
+      "execution_count": 55,
+      "outputs": [
+        {
+          "output_type": "execute_result",
+          "data": {
+            "text/plain": [
+              "2"
+            ]
+          },
+          "metadata": {
+            "tags": []
+          },
+          "execution_count": 55
+        }
+      ]
+    },
+    {
+      "metadata": {
+        "id": "KIb662GHFfuK",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "veh=vehicle_params(0,\"KL\")\n"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "ciAht_oBNAFM",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "def successor_states(lane,lanes_available,state):\n",
+        "        \"\"\"\n",
+        "        Provides the possible next states given the current state for the FSM discussed in the course,\n",
+        "        with the exception that lane changes happen instantaneously, so LCL and LCR can only transition back to KL.\n",
+        "        \"\"\"\n",
+        "        if state == \"KL\":\n",
+        "            states = [\"KL\", \"PLCL\", \"PLCR\",\"STOP\"]\n",
+        "        elif state == \"PLCL\":\n",
+        "            states = [\"KL\",\"STOP\"]\n",
+        "            if lane != (lanes_available-1):\n",
+        "                states.append(\"PLCL\")\n",
+        "                states.append(\"LCL\")\n",
+        "        elif state == \"PLCR\":\n",
+        "            states = [\"KL\",\"STOP\"]\n",
+        "            if lane != 0:\n",
+        "                states.append(\"PLCR\")\n",
+        "                states.append(\"LCR\")\n",
+        "        elif state in (\"LCL\", \"LCR\"):\n",
+        "            states = [\"KL\",\"STOP\"]\n",
+        "        return states"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "3o-x5DotUmL3",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "def calculate_cost():\n",
+        "   validate_safe(waypoints,grid,vehicle_pt_obj_actual)"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "avZqewx5NJsO",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "def choose_next_state(lane_num,lanes_available,current_state,grid):\n",
+        "        states = successor_states(lane_num,lanes_available,current_state)\n",
+        "        costs = []\n",
+        "        for state in states:\n",
+        "          cost = calculate_cost(trajectory, predictions)\n",
+        "          costs.append({\"cost\" : cost, \"state\": state, \"trajectory\": trajectory})\n",
+        "        best = min(costs, key=lambda s: s['cost'])\n",
+        "        return best[\"trajectory\"]"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    }
+  ]
+}
